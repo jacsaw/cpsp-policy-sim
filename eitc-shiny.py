@@ -12,6 +12,12 @@ def eitc_credit(income, phase_out_threshold, phase_in_rate, eitc_max, phase_out_
         else:
             return 0
 
+def eitc_check_inputs(max_credit, phase_in_rate, phase_out_threshold):
+    if max_credit/phase_in_rate < phase_out_threshold:
+        return False
+    else:
+        return True
+
 # Define the UI
 app_ui = ui.page_fluid(
     ui.h2("EITC Input Graphs"),
@@ -22,6 +28,7 @@ app_ui = ui.page_fluid(
             ui.input_numeric("phase_out_threshold", "Phase-Out Threshold:", value=40000, min=0, step=1000),
             ui.input_numeric("phase_out_rate", "Phase-Out Rate:", value=0.0765, min=0, step=0.01),
         ),
+        ui.output_text("text_warning"),
         ui.output_plot("plot")
     )
 )
@@ -29,10 +36,19 @@ app_ui = ui.page_fluid(
 # Define the server logic
 def server(input, output, session):
     @output
+    @render.text
+    def text_warning():
+        if eitc_check_inputs(input.max_credit(), input.phase_in_rate(), input.phase_out_threshold()):
+            return '<span style="color: red;">Warning: Maximum credit too high for given phase-in rate and phase out threshold.</span>'
+        else:
+            return ""
+        
+
+    @output
     @render.plot
     def plot():
         df = pd.DataFrame()
-
+        
         # set income range over which to graph in increments of $500
         df["Income"] = range(0, 42000, 500)
         df["Eitc"] = df["Income"].apply(lambda x: eitc_credit(x, input.phase_out_threshold(), input.phase_in_rate(), input.max_credit(), input.phase_out_rate()))
